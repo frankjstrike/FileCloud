@@ -6,6 +6,10 @@
 
 The purpose of this script is to organize files by year and month on FileCloud.
 
+This script assumes that the pictures in the source folder are in the YYYYMMDD-{anything can be here}.filetype format
+
+E.g. 20230419-mypicture.png, 20230419.png, 20230318.mp4 are all acceptable file formats. 
+
 ## Parameters
 -----------------
 * `-h`, `--help` : Show this help message and exit.
