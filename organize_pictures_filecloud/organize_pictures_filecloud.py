@@ -136,20 +136,56 @@ def move_files(cookies, files, target_folder, server_url):
             elif result_element.text == "1":
                 logger.info(f"> {target_folder}{file_year}/{file_month} folder exists.")
 
-        """Move the file to the target folder"""
-        logger.info(f"> Moving file '{file}' to '{target_folder}{file_year}/{file_month}'")
-        move_file_url = server_url + "/core/renameormove"
-        move_file_data = {
-            'fromname' : file,
-            'toname' : target_folder + file_year + "/" + file_month + "/" + file_name
+        """Checking if file already exists"""
+        logger.info(f"> Checking if file exists in destination")
+
+        dest_file = target_folder + file_year + "/" + file_month + "/" + file_name
+
+        check_file_exists = server_url + "/core/fileexists"
+        search_data = {
+            'file' : dest_file,
+            'caseinsensitive' : 1
         }
 
-        move_file_response = requests.post(move_file_url, data=move_file_data, cookies=cookies)
+        search_response = requests.post(check_file_exists, data=search_data, cookies=cookies)
+        xml_data = ET.fromstring(search_response.text)
+        result_element = xml_data.find('.//result')
 
-        if move_file_response.status_code == 200:
-            logger.info(f"> File '{file}' moved successfully!")
-        else:
-            logger.info(f"> File '{file}' could not be moved")
+        if result_element is not None:
+            if result_element.text == "0":
+                """Move the file to the target folder"""
+                logger.info(f"> Moving file '{file}' to '{target_folder}{file_year}/{file_month}'")
+                move_file_url = server_url + "/core/renameormove"
+                move_file_data = {
+                    'fromname' : file,
+                    'toname' : dest_file
+                }
+
+                move_file_response = requests.post(move_file_url, data=move_file_data, cookies=cookies)
+
+                if move_file_response.status_code == 200:
+                    logger.info(f"> File '{file}' moved successfully!")
+                else:
+                    logger.info(f"> File '{file}' could not be moved")
+            elif result_element.text == "1":
+                logger.info(f"> {dest_file} exists. Deleting it from source")
+
+                path = file.rsplit('/', 1)[0]
+                file_name = file.split('/')[-1]
+
+                """Delete the file from the source folder"""
+                delete_file_url = server_url + "/core/deletefile"
+                delete_file_data = {
+                    'path' : path,
+                    'name' : file_name
+                }
+
+                delete_file_response = requests.post(delete_file_url, data=delete_file_data, cookies=cookies)
+
+                if delete_file_response.status_code == 200:
+                    logger.info(f"> File '{file}' deleted successfully!")
+                else:
+                    logger.info(f"> File '{file}' could not be deleted")
 
 
 def create_folder(cookies, folder, server_url):
@@ -192,8 +228,11 @@ def main():
     """Get a list of files in the source folder"""
     files = search_files(cookies, source_folder, server_url)
 
-    """Move files to the target folder"""
-    move_files(cookies, files, target_folder, server_url)
+    """If there are no file, dont do anything, else move the files"""
+    if len(files) == 0:
+        logger.info("No Files to move")
+    else:
+        move_files(cookies, files, target_folder, server_url)
         
 
 if __name__ == "__main__":
